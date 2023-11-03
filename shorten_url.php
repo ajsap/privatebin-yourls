@@ -52,8 +52,14 @@
 $yourls_api_url = 'https://yourls-domain/yourls-api.php';
 $yourls_signature = 'yourls-signature';
 
-// Get the long URL to be shortened from the query string
+// Input validation
+if (!isset($_GET['url']) || !filter_var($_GET['url'], FILTER_VALIDATE_URL)) {
+    exit('Invalid URL');
+}
 $long_url = $_GET['url'];
+
+// Get the user's IP address
+$user_ip = $_SERVER['REMOTE_ADDR'];
 
 // URL-encode the long URL so it can be included as a query parameter
 $encoded_url = urlencode($long_url);
@@ -61,6 +67,23 @@ $encoded_url = urlencode($long_url);
 // Build the YOURLS API request URL
 $api_request_url = "{$yourls_api_url}?signature={$yourls_signature}&action=shorturl&format=simple&url={$encoded_url}";
 
-// Send the request to the YOURLS server and output the response
-echo file_get_contents($api_request_url);
+// Initialize cURL
+$ch = curl_init($api_request_url);
+
+// Set the cURL options to include the user's IP address in the HTTP headers
+curl_setopt($ch, CURLOPT_HTTPHEADER, array("X-Forwarded-For: $user_ip"));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+// Send the request to the YOURLS server and get the response
+$response = curl_exec($ch);
+
+// Error handling
+if($response === false) {
+    echo 'Curl error: ' . curl_error($ch);
+} else {
+    echo $response;
+}
+
+// Close the cURL handle
+curl_close($ch);
 ?>
